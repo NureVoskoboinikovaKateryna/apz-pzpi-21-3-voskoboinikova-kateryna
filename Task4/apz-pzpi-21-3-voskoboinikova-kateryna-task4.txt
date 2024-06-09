@@ -1,1 +1,668 @@
+1 МЕТА РОБОТИ
 
+Набути навички із розробки клієнтської (front-end) частини для великих проектів, зокрема для розроблюваної програмної системи для дистанційного моніторингу стану здоров’я пацієнтів «StayHealth».
+
+2 ХІД РОБОТИ
+2.1 Опис прийнятих інженерних рішень
+
+Для розробки клієнтської частини проекту було обрано фреймворк Angular 17, з застосуванням мови програмування TypeScript. Проекти Angular складаються  з компонентів, кожен компонент реалізує окрему частину інтерфейсу: головну сторінку, авторизацію, реєстрацію, додавання нового користувача тощо. Також у фреймворк вбудовані функції Two-Way Data Binding, що дозволяє автоматично оновлювати дані в інтерфейсі при їх зміні. Також Angular підтримує асинхронну взаємодію з сервером за допомогою HTTP-запитів, дозволяючи отримувати та надсилати дані до сервера асинхронно.
+
+2.2 Структура проекту
+
+Файл main.ts – є точкою входу для виконання коду:
+1 import { platformBrowserDynamic } from '@angular/platform-browser-dynamic';
+2 import { AppModule } from './app/app.module';
+3 
+4 platformBrowserDynamic().bootstrapModule(AppModule)
+5   .catch(err => console.error(err));
+Після його роботи виконується перехід до компоненту app.module.ts, в якому визначено всі компоненти, сервіси та бібліотеки, які використовуються для роботи веб-додатку (див. додаток А). 
+Кожен компонент складається з файлу розмітки HTML, файлу стилів CSS та файлу TypeScript з функціями та логікою компоненту. 
+Для управління шляхами використовується файл app-routing.module.ts (див. додаток Б).
+
+3 ОПИС ЧАСТИН ПРОГРАМНОГО КОДУ
+3.1 Аутентифікація 
+
+В системі використовується JSON Web Token (JWT) для перевірки аутентифікації користувача та визначення його ролі за відповіддю сервера.
+За допомогою електронної пошти та паролю користувач надсилає запит на авторизацію, на сервері створюється створюється JWT-токен, який отримує веб-клієнт. Коли користувач робить запит до API додатку, запит «перехоплює» auth-interceptor.interceptor.ts та додає до його заголовку токен (див. додаток В). 
+За авторизацію в певній ролі, збереження даних про користувача та завершення сесій відповідає auth.service.ts (див. додаток Г).
+
+3.2 Локалізація
+
+Веб-додаток підтримує дві локалі: українську та англійську. Для їх реалізації було використано бібліотеки @ngx-translate/core та @ngx-translate/http-loader. У якості стандартної мови визначено українську, також є функція збереження вибору мови у локальному сховищі та зчитування при ініціалізації:
+01   constructor(public authService: AuthService, private translate: TranslateService) {
+02     const savedLanguage = localStorage.getItem('language') || 'ua';
+03     this.translate.setDefaultLang(savedLanguage);
+04     this.translate.use(savedLanguage);
+05   }
+06 
+07   switchLanguage(language: string) {
+08     this.translate.use(language);
+09     localStorage.setItem('language', language);
+10   }
+Модуль перекладу налаштовано у app.module.ts (див. Додаток А). Переклади рядків двома мовами містяться у файлах ua.json та en.json (див. Додаток Д). Також за допомогою date pipe дані про дату та час, отримані з сервера в форматі UTC, приводяться у відповідність локалі.
+
+3.3 Валідація
+
+У веб застосунку у якості валідації відбувається перевірка введених даних за допомогою атрибутів форм required, maxlength та minlength, контролюється тип введених даних (email, text, number). У випадку неправильно заповненого поля, користувач отримає інформаційне повідомлення. Також за допомогою ngModel відбувається перевірка відповідності вимогам за бізнес-логікою. Наприклад, чи збігається пароль та повторно введений пароль:
+01 <div class="form-group mb-4">
+02     <label for="passwordInput">{{ 'FORM.PASSWORD' | translate }}</label>
+03     <input #password="ngModel"
+04            name="password"
+05            [(ngModel)]="registrationData.password"
+06            type="password"
+07            id="passwordInput"
+08            class="form-control"
+09            required
+10            minlength="8" />
+11     <div *ngIf="password.invalid && password.touched" class="text-danger">{{ 'FORM.PASSWORD_MIN_LENGTH' | translate }}</div>
+12   </div>
+
+4 UML ДІАГРАМИ СИСТЕМИ
+4.1 UML діаграма прецедентів (Use Case Diagram)
+
+На рисунку 1.4.1 зображена діаграма прецедентів клієнтської частини системи для дистанційного моніторингу стану здоров’я пацієнтів. Є 3 види акторів: пацієнт, лікар, адміністратор. В залежності від ролі кожен з них має різну функціональність.
+
+4.2 UML діаграма компонент (Component Diagram)
+
+На рисунку 1.4.2 зображено UML діаграму компонент для веб-клієнта розроблюваної системи. На ній відображено залежності між структурними компонентами застосунку.
+
+4.3 UML діаграма діяльності (Activity Diagram)
+
+На рисунку 1.4.3 зображена діаграма діяльності, яка відображає модель основних послідовностей бізнес-процесів, пов’язаних із процесом взаємодії з пацієнтом з точки зору лікаря.
+
+4.4 UML діаграма станів (State Diagram)
+
+На рисунку 1.4.4 зображено діаграму станів. Діаграма відображає зміни станів процесу додавання нового медичного запису та відправки повідомлення.
+
+5 ВИСНОВКИ
+
+Під час даної лабораторної роботи була розроблена клієнтська частина програмної системи для дистанційного моніторингу стану здоров’я пацієнтів, описано прийняті інженерні рішення, розроблено діаграми.
+
+ДОДАТОК А
+app.module.ts
+
+001 import { NgModule } from '@angular/core';
+002 import { BrowserModule } from '@angular/platform-browser';
+003 
+004 import { AppRoutingModule } from './app-routing.module';
+005 import { AppComponent } from './app.component';
+006 import { HeaderComponent } from './reusable/header/header.component';
+007 import { LoginComponent } from './ui/login/login.component';
+008 import { RegisterComponent } from './ui/register/register.component';
+009 import { HttpClientModule, HTTP_INTERCEPTORS, HttpClient } from '@angular/common/http';
+010 import { FormsModule } from '@angular/forms';
+011 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
+012 import { ToastrModule } from 'ngx-toastr';
+013 import { AuthInterceptor } from './interceptors/auth-interceptor.interceptor';
+014 import { HomeComponent } from './ui/home/home.component';
+015 import { PatientRegisterFormComponent } from './ui/register/patient-register-form/patient-register-form.component';
+016 import { DoctorRegisterFormComponent } from './ui/register/doctor-register-form/doctor-register-form.component';
+017 import { ManagerRegisterFormComponent } from './ui/register/manager-register-form/manager-register-form.component';
+018 import { NotificationsComponent } from './ui/notifications/notifications.component';
+019 import { MedicalRecordsComponent } from './ui/medical-records/medical-records.component';
+020 import { MeasurementsComponent } from './ui/measurements/measurements.component';
+021 import { PatientProfileComponent } from './ui/patient-profile/patient-profile.component';
+022 import { EditPatientProfileComponent } from './ui/patient-profile/edit-patient-profile/edit-patient-profile.component';
+023 import { DoctorProfileComponent } from './ui/doctor-profile/doctor-profile.component';
+024 import { ManagerProfileComponent } from './ui/manager-profile/manager-profile.component';
+025 import { EditDoctorProfileComponent } from './ui/doctor-profile/edit-doctor-profile/edit-doctor-profile.component';
+026 import { EditManagerProfileComponent } from './ui/manager-profile/edit-manager-profile/edit-manager-profile.component';
+027 import { DmedicalRecordsComponent } from './ui/dmedical-records/dmedical-records.component';
+028 import { AddDmedicalRecordComponent } from './ui/dmedical-records/add-dmedical-record/add-dmedical-record.component';
+029 import { EditDmedicalRecordComponent } from './ui/dmedical-records/edit-dmedical-record/edit-dmedical-record.component';
+030 import { DnotificationsComponent } from './ui/dnotifications/dnotifications.component';
+031 import { EditDnotificationComponent } from './ui/dnotifications/edit-dnotification/edit-dnotification.component';
+032 import { AddDnotificationComponent } from './ui/dnotifications/add-dnotification/add-dnotification.component';
+033 import { DpatientsComponent } from './ui/dpatients/dpatients.component';
+034 import { MpatientsComponent } from './ui/mpatients/mpatients.component';
+035 import { AdminPanelComponent } from './ui/admin-panel/admin-panel.component';
+036 import { PatientsComponent } from './ui/admin-panel/patients/patients.component';
+037 import { AdministratorsComponent } from './ui/admin-panel/administrators/administrators.component';
+038 import { DoctorsComponent } from './ui/admin-panel/doctors/doctors.component';
+039 import { CompanyManagersComponent } from './ui/admin-panel/company-managers/company-managers.component';
+040 import { CompaniesComponent } from './ui/admin-panel/companies/companies.component';
+041 import { MedicalDevicesComponent } from './ui/admin-panel/medical-devices/medical-devices.component';
+042 import { MedicalDeviceTypesComponent } from './ui/admin-panel/medical-device-types/medical-device-types.component';
+043 import { BloodTypesComponent } from './ui/admin-panel/blood-types/blood-types.component';
+044 import { SpecializationsComponent } from './ui/admin-panel/specializations/specializations.component';
+045 import { ManufacturersComponent } from './ui/admin-panel/manufacturers/manufacturers.component';
+046 import { AdminMedicalRecordsComponent } from './ui/admin-panel/medical-records/medical-records.component';
+047 import { AdminMeasurementsComponent } from './ui/admin-panel/measurements/measurements.component';
+048 import { AdminNotificationsComponent } from './ui/admin-panel/notifications/notifications.component';
+049 import { CreatePatientComponent } from './ui/admin-panel/patients/create-patient/create-patient.component';
+050 import { PutPatientComponent } from './ui/admin-panel/patients/put-patient/put-patient.component';
+051 import { CreateNotificationComponent } from './ui/admin-panel/notifications/create-notification/create-notification.component';
+052 import { PutNotificationComponent } from './ui/admin-panel/notifications/put-notification/put-notification.component';
+053 import { CreateManufacturerComponent } from './ui/admin-panel/manufacturers/create-manufacturer/create-manufacturer.component';
+054 import { PutManufacturerComponent } from './ui/admin-panel/manufacturers/put-manufacturer/put-manufacturer.component';
+055 import { CreateSpecializationComponent } from './ui/admin-panel/specializations/create-specialization/create-specialization.component';
+056 import { PutSpecializationComponent } from './ui/admin-panel/specializations/put-specialization/put-specialization.component';
+057 import { CreateCompanyComponent } from './ui/admin-panel/companies/create-company/create-company.component';
+058 import { PutCompanyComponent } from './ui/admin-panel/companies/put-company/put-company.component';
+059 import { CreateDoctorComponent } from './ui/admin-panel/doctors/create-doctor/create-doctor.component';
+060 import { PutDoctorComponent } from './ui/admin-panel/doctors/put-doctor/put-doctor.component';
+061 import { CreateAdministratorComponent } from './ui/admin-panel/administrators/create-administrator/create-administrator.component';
+062 import { PutAdministratorComponent } from './ui/admin-panel/administrators/put-administrator/put-administrator.component';
+063 import { CreateMedicalRecordComponent } from './ui/admin-panel/medical-records/create-medical-record/create-medical-record.component';
+064 import { PutMedicalRecordComponent } from './ui/admin-panel/medical-records/put-medical-record/put-medical-record.component';
+065 import { CreateMedicalDeviceTypeComponent } from './ui/admin-panel/medical-device-types/create-medical-device-type/create-medical-device-type.component';
+066 import { PutMedicalDeviceTypeComponent } from './ui/admin-panel/medical-device-types/put-medical-device-type/put-medical-device-type.component';
+067 import { CreateMedicalDeviceComponent } from './ui/admin-panel/medical-devices/create-medical-device/create-medical-device.component';
+068 import { PutMedicalDeviceComponent } from './ui/admin-panel/medical-devices/put-medical-device/put-medical-device.component';
+069 import { CreateCompanyManagerComponent } from './ui/admin-panel/company-managers/create-company-manager/create-company-manager.component';
+070 import { PutCompanyManagerComponent } from './ui/admin-panel/company-managers/put-company-manager/put-company-manager.component';
+071 import { CreateMeasurementComponent } from './ui/admin-panel/measurements/create-measurement/create-measurement.component';
+072 import { TranslateModule, TranslateLoader } from '@ngx-translate/core';
+073 import { TranslateHttpLoader } from '@ngx-translate/http-loader';
+074 
+075 export function HttpLoaderFactory(http: HttpClient) {
+076   return new TranslateHttpLoader(http);
+077 }
+078 
+079 @NgModule({
+080   declarations: [
+081     AppComponent,
+082     HeaderComponent,
+083     LoginComponent,
+084     RegisterComponent,
+085     HomeComponent,
+086     PatientRegisterFormComponent,
+087     DoctorRegisterFormComponent,
+088     ManagerRegisterFormComponent,
+089     NotificationsComponent,
+090     MedicalRecordsComponent,
+091     MeasurementsComponent,
+092     PatientProfileComponent,
+093     EditPatientProfileComponent,
+094     DoctorProfileComponent,
+095     ManagerProfileComponent,
+096     EditDoctorProfileComponent,
+097     EditManagerProfileComponent,
+098     DmedicalRecordsComponent,
+099     AddDmedicalRecordComponent,
+100     EditDmedicalRecordComponent,
+101     DnotificationsComponent,
+102     EditDnotificationComponent,
+103     AddDnotificationComponent,
+104     DpatientsComponent,
+105     MpatientsComponent,
+106     AdminPanelComponent,
+107     PatientsComponent,
+108     AdministratorsComponent,
+109     DoctorsComponent,
+110     CompanyManagersComponent,
+111     CompaniesComponent,
+112     MedicalDevicesComponent,
+113     MedicalDeviceTypesComponent,
+114     BloodTypesComponent,
+115     SpecializationsComponent,
+116     ManufacturersComponent,
+117     AdminMedicalRecordsComponent,
+118     AdminMeasurementsComponent,
+119     AdminNotificationsComponent,
+120     CreatePatientComponent,
+121     PutPatientComponent,
+122     CreateNotificationComponent,
+123     PutNotificationComponent,
+124     CreateMedicalRecordComponent,
+125     PutMedicalRecordComponent,
+126     CreateManufacturerComponent,
+127     PutManufacturerComponent,
+128     CreateSpecializationComponent,
+129     PutSpecializationComponent,
+130     CreateMedicalDeviceTypeComponent,
+131     PutMedicalDeviceTypeComponent,
+132     CreateMedicalDeviceComponent,
+133     PutMedicalDeviceComponent,
+134     CreateCompanyComponent,
+135     PutCompanyComponent,
+136     CreateCompanyManagerComponent,
+137     PutCompanyManagerComponent,
+138     CreateDoctorComponent,
+139     PutDoctorComponent,
+140     CreateAdministratorComponent,
+141     PutAdministratorComponent,
+142     CreateMeasurementComponent
+143   ],
+144   imports: [
+145     BrowserModule,
+146     AppRoutingModule,
+147     HttpClientModule,
+148     FormsModule,
+149     BrowserAnimationsModule,
+150     ToastrModule.forRoot({
+151       maxOpened: 3
+152     }),
+153     TranslateModule.forRoot({
+154       loader: {
+155         provide: TranslateLoader,
+156         useFactory: HttpLoaderFactory,
+157         deps: [HttpClient]
+158       }
+159     })
+160   ],
+161   providers: [{
+162     provide: HTTP_INTERCEPTORS, useClass: AuthInterceptor, multi: true
+163   }],
+164   bootstrap: [AppComponent]
+165 })
+166 export class AppModule { }
+ 
+ДОДАТОК Б
+app-routing.module.ts
+
+001 import { NgModule } from '@angular/core';
+002 import { RouterModule, Routes } from '@angular/router';
+003 
+004 import { LoginComponent } from './ui/login/login.component';
+005 import { RegisterComponent } from './ui/register/register.component';
+006 import { HomeComponent } from './ui/home/home.component';
+007 import { NotificationsComponent } from './ui/notifications/notifications.component';
+008 import { MedicalRecordsComponent } from './ui/medical-records/medical-records.component';
+009 import { MeasurementsComponent } from './ui/measurements/measurements.component';
+010 import { authorizedGuard } from './guards/authorized.guard';
+011 import { PatientProfileComponent } from './ui/patient-profile/patient-profile.component';
+012 import { allowedToGuard } from './guards/allowed-to.guard';
+013 import { DoctorProfileComponent } from './ui/doctor-profile/doctor-profile.component';
+014 import { ManagerProfileComponent } from './ui/manager-profile/manager-profile.component';
+015 import { DmedicalRecordsComponent } from './ui/dmedical-records/dmedical-records.component';
+016 import { AddDmedicalRecordComponent } from './ui/dmedical-records/add-dmedical-record/add-dmedical-record.component';
+017 import { EditDmedicalRecordComponent } from './ui/dmedical-records/edit-dmedical-record/edit-dmedical-record.component';
+018 import { DnotificationsComponent } from './ui/dnotifications/dnotifications.component';
+019 import { EditDnotificationComponent } from './ui/dnotifications/edit-dnotification/edit-dnotification.component';
+020 import { AddDnotificationComponent } from './ui/dnotifications/add-dnotification/add-dnotification.component';
+021 import { DpatientsComponent } from './ui/dpatients/dpatients.component';
+022 import { MpatientsComponent } from './ui/mpatients/mpatients.component';
+023 import { AdminPanelComponent } from './ui/admin-panel/admin-panel.component';
+024 import { isAdminGuard } from './guards/is-admin.guard';
+025 import { CreatePatientComponent } from './ui/admin-panel/patients/create-patient/create-patient.component';
+026 import { PutPatientComponent } from './ui/admin-panel/patients/put-patient/put-patient.component';
+027 import { CreateSpecializationComponent } from './ui/admin-panel/specializations/create-specialization/create-specialization.component';
+028 import { PutSpecializationComponent } from './ui/admin-panel/specializations/put-specialization/put-specialization.component';
+029 import { CreateNotificationComponent } from './ui/admin-panel/notifications/create-notification/create-notification.component';
+030 import { PutNotificationComponent } from './ui/admin-panel/notifications/put-notification/put-notification.component';
+031 import { CreateMedicalRecordComponent } from './ui/admin-panel/medical-records/create-medical-record/create-medical-record.component';
+032 import { PutMedicalRecordComponent } from './ui/admin-panel/medical-records/put-medical-record/put-medical-record.component';
+033 import { CreateMedicalDeviceTypeComponent } from './ui/admin-panel/medical-device-types/create-medical-device-type/create-medical-device-type.component';
+034 import { PutMedicalDeviceTypeComponent } from './ui/admin-panel/medical-device-types/put-medical-device-type/put-medical-device-type.component';
+035 import { CreateMedicalDeviceComponent } from './ui/admin-panel/medical-devices/create-medical-device/create-medical-device.component';
+036 import { PutMedicalDeviceComponent } from './ui/admin-panel/medical-devices/put-medical-device/put-medical-device.component';
+037 import { CreateManufacturerComponent } from './ui/admin-panel/manufacturers/create-manufacturer/create-manufacturer.component';
+038 import { PutManufacturerComponent } from './ui/admin-panel/manufacturers/put-manufacturer/put-manufacturer.component';
+039 import { CreateDoctorComponent } from './ui/admin-panel/doctors/create-doctor/create-doctor.component';
+040 import { PutDoctorComponent } from './ui/admin-panel/doctors/put-doctor/put-doctor.component';
+041 import { CreateCompanyComponent } from './ui/admin-panel/companies/create-company/create-company.component';
+042 import { CreateCompanyManagerComponent } from './ui/admin-panel/company-managers/create-company-manager/create-company-manager.component';
+043 import { PutCompanyManagerComponent } from './ui/admin-panel/company-managers/put-company-manager/put-company-manager.component';
+044 import { PutCompanyComponent } from './ui/admin-panel/companies/put-company/put-company.component';
+045 import { CreateAdministratorComponent } from './ui/admin-panel/administrators/create-administrator/create-administrator.component';
+046 import { PutAdministratorComponent } from './ui/admin-panel/administrators/put-administrator/put-administrator.component';
+047 import { CreateMeasurementComponent } from './ui/admin-panel/measurements/create-measurement/create-measurement.component';
+048 
+049 const routes: Routes = [
+050   { path: "home", component: HomeComponent, canActivate: [allowedToGuard] },
+051   { path: "", redirectTo: "/home", pathMatch: "full" },
+052   { path: "login", component: LoginComponent, canActivate: [allowedToGuard] },
+053   { path: "register", component: RegisterComponent, canActivate: [allowedToGuard] },
+054 
+055   { path: "notifications", component: NotificationsComponent, canActivate: [authorizedGuard] },
+056   { path: "medical-records", component: MedicalRecordsComponent, canActivate: [authorizedGuard] },
+057   { path: "dmedical-records", component: DmedicalRecordsComponent, canActivate: [authorizedGuard] },
+058   { path: "measurements", component: MeasurementsComponent, canActivate: [authorizedGuard] },
+059   { path: "pprofile/:patientId", component: PatientProfileComponent, canActivate: [authorizedGuard] },
+060   { path: "dprofile/:doctorId", component: DoctorProfileComponent, canActivate: [authorizedGuard] },
+061   { path: "mprofile/:managerId", component: ManagerProfileComponent, canActivate: [authorizedGuard] },
+062   { path: "add-mrecord", component: AddDmedicalRecordComponent, canActivate: [authorizedGuard] },
+063   { path: "edit-record/:medicalRecordId", component: EditDmedicalRecordComponent, canActivate: [authorizedGuard] },
+064   { path: "dnotifications", component: DnotificationsComponent, canActivate: [authorizedGuard] },
+065   { path: "edit-dnotification/:notificationId", component: EditDnotificationComponent, canActivate: [authorizedGuard] },
+066   { path: "add-dnotification", component: AddDnotificationComponent, canActivate: [authorizedGuard] },
+067   { path: "dpatients", component: DpatientsComponent, canActivate: [authorizedGuard] },
+068   { path: "mpatients", component: MpatientsComponent, canActivate: [authorizedGuard] },
+069 
+070   { path: "admin-panel", component: AdminPanelComponent, canActivate: [isAdminGuard] },
+071   { path: "create-patient", component: CreatePatientComponent, canActivate: [isAdminGuard] },
+072   { path: "put-patient/:patientId", component: PutPatientComponent, canActivate: [isAdminGuard] },
+073   { path: "create-specialization", component: CreateSpecializationComponent, canActivate: [isAdminGuard] },
+074   { path: "put-specialization/:spezId", component: PutSpecializationComponent, canActivate: [isAdminGuard] },
+075   { path: "create-notification", component: CreateNotificationComponent, canActivate: [isAdminGuard] },
+076   { path: "put-notification/:notificationId", component: PutNotificationComponent, canActivate: [isAdminGuard] },
+077   { path: "create-medical-record", component: CreateMedicalRecordComponent, canActivate: [isAdminGuard] },
+078   { path: "put-medical-record/:medicalRecordId", component: PutMedicalRecordComponent, canActivate: [isAdminGuard] },
+079   { path: "create-medical-device-type", component: CreateMedicalDeviceTypeComponent, canActivate: [isAdminGuard] },
+080   { path: "put-medical-device-type/:mDeviceTypeId", component: PutMedicalDeviceTypeComponent, canActivate: [isAdminGuard] },
+081   { path: "create-medical-device", component: CreateMedicalDeviceComponent, canActivate: [isAdminGuard] },
+082   { path: "put-medical-device/:mDeviceId", component: PutMedicalDeviceComponent, canActivate: [isAdminGuard] },
+083   { path: "create-manufacturer", component: CreateManufacturerComponent, canActivate: [isAdminGuard] },
+084   { path: "put-manufacturer/:manfId", component: PutManufacturerComponent, canActivate: [isAdminGuard] },
+085   { path: "create-doctor", component: CreateDoctorComponent, canActivate: [isAdminGuard] },
+086   { path: "put-doctor/:doctorId", component: PutDoctorComponent, canActivate: [isAdminGuard] },
+087   { path: "create-company-manager", component: CreateCompanyManagerComponent, canActivate: [isAdminGuard] },
+088   { path: "put-company-manager/:managerId", component: PutCompanyManagerComponent, canActivate: [isAdminGuard] },
+089   { path: "create-company", component: CreateCompanyComponent, canActivate: [isAdminGuard] },
+090   { path: "put-company/:companyId", component: PutCompanyComponent, canActivate: [isAdminGuard] },
+091   { path: "create-administrator", component: CreateAdministratorComponent, canActivate: [isAdminGuard] },
+092   { path: "put-administrator/:administratorId", component: PutAdministratorComponent, canActivate: [isAdminGuard] },
+093   { path: "create-measurement", component: CreateMeasurementComponent, canActivate: [isAdminGuard] }
+094 ];
+095 
+096 @NgModule({
+097   imports: [RouterModule.forRoot(routes)],
+098   exports: [RouterModule]
+099 })
+100 export class AppRoutingModule { }
+ 
+ДОДАТОК В
+auth-interceptor.interceptor.ts
+
+01 import { HttpEvent, HttpHandler, HttpInterceptor, HttpRequest } from "@angular/common/http";
+02 import { Injectable } from "@angular/core";
+03 import { Observable } from "rxjs";
+04 
+05 @Injectable()
+06 export class AuthInterceptor implements HttpInterceptor {
+07 
+08   intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
+09     const token = localStorage.getItem("token");
+10 
+11     if (token) {
+12       const cloned = req.clone({
+13         headers: req.headers.set("Authorization", "Bearer " + token)
+14       });
+15 
+16       return next.handle(cloned);
+17     }
+18 
+19     return next.handle(req);
+20   }
+21 
+22 }
+ 
+ДОДАТОК Г
+auth.service.ts
+
+001 import { HttpClient } from '@angular/common/http';
+002 import { Injectable } from '@angular/core';
+003 import { LoginData } from '../../ui/login/login.model';
+004 import { ToastrService } from 'ngx-toastr';
+005 import { Router } from '@angular/router';
+006 import { environment } from '../../../environments/environment';
+007 import moment from "moment"
+008 import * as jwt_decode from 'jwt-decode';
+009 import { Observable, of } from 'rxjs';
+010 
+011 export class User {
+012   email: string = ""
+013   role: string = ""
+014   name: string = ""
+015 }
+016 
+017 @Injectable({
+018   providedIn: 'root'
+019 })
+020 export class AuthService {
+021 
+022   url: string = environment.apiBaseUrl;
+023 
+024   constructor(private http: HttpClient, private toastr: ToastrService, private router: Router) { }
+025 
+026   login(loginData: LoginData) {
+027     if (loginData.Email.length == 0
+028       || loginData.Password.length == 0) {
+029       this.toastr.error("Не всі поля заповнені", "Помилка");
+030       return;
+031     }
+032 
+033     this.http.post(this.url + "/Accounts/login", loginData).subscribe(
+034       (response: any) => {
+035         if (!response.flag) {
+036           this.toastr.error(response.message, "Помилка");
+037         } else {
+038           this.setSession(response);
+039           this.router.navigate(["home"]);
+040         }
+041       },
+042       error => {
+043         this.toastr.error("Проблема сервера, спробуйте пізніше", "Помилка");
+044       }
+045     );
+046   }
+047 
+048   registerDoctor(event: any) {
+049     this.http.post(this.url + "/Accounts/register-doctor", event).subscribe(
+050       (response: any) => {
+051         if (!response.flag) {
+052           this.toastr.error(response.message, "Помилка");
+053         } else {
+054           this.login({ Email: event.email, Password: event.password });
+055         }
+056       },
+057       error => {
+058         this.toastr.error("Проблема сервера, спробуйте пізніше", "Помилка");
+059       }
+060     );
+061   }
+062 
+063   registerDoctorAdmin(event: any) {
+064     this.http.post(this.url + "/Accounts/register-doctor", event).subscribe(
+065       (response: any) => {
+066         if (!response.flag) {
+067           this.toastr.error(response.message, "Помилка");
+068         } else {
+069           this.router.navigate(['/admin-panel']);
+070         }
+071       },
+072       error => {
+073         this.toastr.error("Проблема сервера, спробуйте пізніше", "Помилка");
+074       }
+075     );
+076   }
+077 
+078   registerPatient(event: any) {
+079     this.http.post(this.url + "/Accounts/register-patient", event).subscribe(
+080       (response: any) => {
+081         if (!response.flag) {
+082           this.toastr.error(response.message, "Помилка");
+083         } else {
+084           this.login({ Email: event.email, Password: event.password });
+085         }
+086       },
+087       error => {
+088         this.toastr.error("Проблема сервера, спробуйте пізніше", "Помилка");
+089       }
+090     );
+091   }
+092 
+093   registerPatientAdmin(event: any) {
+094     this.http.post(this.url + "/Accounts/register-patient", event).subscribe(
+095       (response: any) => {
+096         if (!response.flag) {
+097           this.toastr.error(response.message, "Помилка");
+098         } else {
+099           this.router.navigate(['/admin-panel']);
+100         }
+101       },
+102       error => {
+103         this.toastr.error("Проблема сервера, спробуйте пізніше", "Помилка");
+104       }
+105     );
+106   }
+107 
+108   registerManager(event: any) {
+109     this.http.post(this.url + "/Accounts/register-manager", event).subscribe(
+110       (response: any) => {
+111         if (!response.flag) {
+112           this.toastr.error(response.message, "Помилка");
+113         } else {
+114           this.login({ Email: event.email, Password: event.password });
+115         }
+116       },
+117       error => {
+118         this.toastr.error("Проблема сервера, спробуйте пізніше", "Помилка");
+119       }
+120     );
+121   }
+122 
+123   registerManagerAdmin(event: any) {
+124     this.http.post(this.url + "/Accounts/register-manager", event).subscribe(
+125       (response: any) => {
+126         if (!response.flag) {
+127           this.toastr.error(response.message, "Помилка");
+128         } else {
+129           this.router.navigate(['/admin-panel']);
+130         }
+131       },
+132       error => {
+133         this.toastr.error("Проблема сервера, спробуйте пізніше", "Помилка");
+134       }
+135     );
+136   }
+137 
+138   registerAdmin(event: any) {
+139     this.http.post(this.url + "/Accounts/register-admin", event).subscribe(
+140       (response: any) => {
+141         if (!response.flag) {
+142           this.toastr.error(response.message, "Помилка");
+143         } else {
+144           this.router.navigate(['/admin-panel']);
+145         }
+146       },
+147       error => {
+148         this.toastr.error("Проблема сервера, спробуйте пізніше", "Помилка");
+149       }
+150     );
+151   }
+152 
+153   getToken() {
+154     return this.isLoggedIn() ? localStorage.getItem('token') : null;
+155   }
+156 
+157   public getUserInfo(): User | undefined {
+158     if (this.isLoggedOut()) {
+159       return undefined;
+160     }
+161 
+162     var user = new User();
+163     var dToken = this.getDecodedAccessToken(this.getToken()!);
+164     user.email = this.findValueByPartialKey("emailaddress", dToken)!;
+165 
+166     user.role = this.findValueByPartialKey("role", dToken)!;
+167     switch (user.role) {
+168       case "Patient":
+169         user.role = "Пацієнт";
+170         break;
+171       case "Administrator":
+172         user.role = "Адміністратор";
+173         break;
+174       case "Doctor":
+175         user.role = "Лікар";
+176         break;
+177       case "CompanyManager":
+178         user.role = "Менеджер";
+179         break;
+180     }
+181 
+182     user.name = this.findValueByPartialKey("name", dToken)!;
+183     return user;
+184   }
+185 
+186   private findValueByPartialKey(partialKey: string, dict: any): string | undefined {
+187     const keys = Object.keys(dict);
+188     for (const key of keys) {
+189       const parts = key.split('/');
+190       const lastPart = parts[parts.length - 1];
+191       if (lastPart === partialKey) {
+192         return dict[key];
+193       }
+194     }
+195     return undefined;
+196   }
+197 
+198   private setSession(authResult: any) {
+199     const decodedToken = this.getDecodedAccessToken(authResult.token);
+200     const expiresAt = moment().add(decodedToken.exp, 'second');
+201 
+202     localStorage.setItem('token', authResult.token);
+203     localStorage.setItem("expires_at", JSON.stringify(expiresAt.valueOf()));
+204   }
+205 
+206   logout() {
+207     localStorage.removeItem("token");
+208     localStorage.removeItem("expires_at");
+209     window.location.reload();
+210   }
+211 
+212   public isLoggedIn() {
+213     return moment().isBefore(this.getExpiration());
+214   }
+215 
+216   isLoggedOut() {
+217     return !this.isLoggedIn();
+218   }
+219 
+220   getExpiration() {
+221     const expiration = localStorage.getItem("expires_at")!;
+222     const expiresAt = JSON.parse(expiration);
+223     return moment(expiresAt);
+224   }  
+225 
+226   getDecodedAccessToken(token: string): any {
+227     try {
+228       return jwt_decode.jwtDecode(token);
+229     } catch (Error) {
+230       return null;
+231     }
+232   }
+233 
+234   getCurrentUser(type: string): Observable<any> {
+235     if (this.isLoggedOut()) {
+236       return of(undefined);
+237     }
+238 
+239     let userInfo = this.getUserInfo()!;
+240     switch (type) {
+241       case "patient":
+242       case "Пацієнт":
+243         return this.http.get(this.url + "/Patients/email/" + userInfo.email);
+244       case "doctor":
+245       case "Лікар":
+246         return this.http.get(this.url + "/Doctors/email/" + userInfo.email);
+247       case "admin":
+248       case "administrator":
+249       case "Administrator":
+250       case "Адміністратор":
+251       case "Адмін":
+252         return this.http.get(this.url + "/Administrators/email/" + userInfo.email);
+253       case "manager":
+254       case "company manager":
+255       case "Менеджер":
+256         return this.http.get(this.url + "/CompanyManagers/email/" + userInfo.email);
+257     }
+258 
+259     return of(undefined);
+260   }
+261 
+262   getCurrentUserById(type: string, id: number): Observable<any> {
+263     switch (type) {
+264       case "patient":
+265       case "Пацієнт":
+266         return this.http.get(this.url + "/Patients/" + id);
+267       case "doctor":
+268       case "Лікар":
+269         return this.http.get(this.url + "/Doctors/" + id);
+270       case "admin":
+271       case "administrator":
+272       case "Administrator":
+273       case "Адміністратор":
+274       case "Адмін":
+275         return this.http.get(this.url + "/Admininstrators/" + id);
+276       case "manager":
+277       case "company manager":
+278       case "Менеджер":
+279         return this.http.get(this.url + "/CompanyManagers/" + id);
+280     }
+281 
+282     return of(undefined);
+283   }
+284 
+285 }
