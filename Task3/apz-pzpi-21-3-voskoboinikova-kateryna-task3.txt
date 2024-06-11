@@ -1,1 +1,226 @@
+1 МЕТА РОБОТИ
+
+Розробити програмне забезпечення IoT пристрою для системи дистанційного моніторингу стану здоров’я пацієнтів, описати прийняті інженерні рішення, будову програмного забезпечення.
+
+2 ХІД РОБОТИ
+2.1 Опис прийнятих інженерних рішень
+
+Для розробки програмного забезпечення для IoT пристрою смарт-годинника було обрано технологію ASP.NET Core, у якості пристрою обрано Raspberry Pi. Raspberry Pi зазвичай використовують для створення малих, потужних комп'ютерів, але також його можна використовувати для розгортання та запуску веб-додатків.
+
+2.2 Структура проекту
+Розумний пристрій самостійно слідкує за станом пацієнта відповідно до стандартного діапазону нормальних температур та пульсу. Для цього в проекті створено сервіс контролю значень, який кожні 5 хвилин імітує зчитування з датчику значень температури та пульсу, звіряє з допустимими та в разі невідповідності якогось з отриманих показників нормі відправляє сповіщення. 
+Головний файл Program.cs (див. Додаток А) - вхідна точка програми, виконує запуск додатку, його сервісів та контролерів. MeasurementService.cs (див. Додаток Б) - сервіс, який зчитує, оброблює та аналізує отриманні вимірювання.
+У проекті також наявні файли моделей, які застосовуються для роботи додатку, та файли з розширенням .json для локалізації українською та англійською мовами.
+
+3 ОПИС ЧАСТИН ПРОГРАМНОГО КОДУ
+3.1 Локалізація
+
+Додаток має локалізацію, надаючи користувачу можливість обрати бажану мову (див. Додаток А). Після здійснення вибору всі ресурси, необхідні для локалізації додатку, завантажуються з файлу .json. У випадку відсутності файлу з обраною мовою, завантажується файл української як стандартної мови. 
+
+3.2 Збір та аналіз даних
+Збір, обробка та аналіз отриманих даних здійснюється сервісом MeasurementService.cs (див. Додаток Б). Отримані дані надсилаються до бази даних за допомогою запитів.
+
+3.3 Статистика
+Для отримання статистики використовується контролер StatisticsController.cs (див. Додаток В), який зчитує всі вимірювання з бази даних, обчислює середнє значення показників для заданого пацієнта, і повертає це середнє значення у відповідь на HTTP-запит.
+
+4 UML ДІАГРАМИ СИСТЕМИ
+4.1 UML діаграма прецедентів (Use Case Diagram)
+
+На рисунку 1.4.1 зображена діаграма прецедентів програмного забезпечення IoT пристрою для системи дистанційного моніторингу стану здоров’я. Є 2 види акторів: користувач та IoT пристрій. В залежності від ролі кожен з них має різну функціональність.
+
+4.2 UML діаграма взаємодії (Interaction Overview Diagram)
+
+На рисунку 1.4.2 зображена діаграма взаємодії  програмної системи для дистанційного моніторингу стану здоров’я. На ній відображено опис поведінки об'єктів, які відстежують стан показників, надсилають їх на сервер та сповіщають у разі відхилення від норми.
+
+4.3 UML діаграма діяльності (Activity Diagram)
+
+На рисунку 1.4.3 зображена діаграма діяльності пристрою IoT. 
+
+4.4 UML діаграма компонент (Component  Diagram)
+
+На рисунку 1.4.4 зображена діаграма компонентів. Є 4 компонента: Health Monitoring(представляє основну функціональність пристрою для моніторингу здоров'я), Data Processing(відповідає за обробку та аналіз виміряних даних), Emergency Alert(запускає екстрені сповіщення на підставі критичних показників) та Data Display(відображає отримані дані).
+
+5 ВИСНОВКИ
+
+Під час даної лабораторної роботи було розроблено програмне забезпечення для IoT пристрою системи дистанційного моніторингу стану здоров’я, описано прийняті інженерні рішення, розроблено діаграми, які наводять будову програмного забезпечення.
+
+ДОДАТОК А
+Program.cs
+
+001 using Microsoft.EntityFrameworkCore;
+002 using Microsoft.Extensions.DependencyInjection;
+003 using Microsoft.Extensions.Hosting;
+004 using StayHealthIoT.Data;
+005 using StayHealthIoT.Services;
+006 using System;
+007 using System.Collections.Generic;
+008 using System.Globalization;
+009 using System.IO;
+010 using System.Text.Json;
+011 
+012 namespace StayHealthIoT
+013 {
+014 public class Program
+015 {
+016 public static int PatientId { get; private set; }
+017 public static string MedicalDeviceId { get; private set; }
+018 public static Dictionary<string, string> LocalizationResources { get; private set; }
+019 
+020 public static void Main(string[] args)
+021 {
+022 var builder = WebApplication.CreateBuilder(args);
+023 
+024 builder.Services.AddControllers();
+025 builder.Services.AddDbContext<SmartWatchDbContext>(options =>
+026 options.UseSqlServer(builder.Configuration.GetConnectionString("SmartWatchDbConnection")));
+027 builder.Services.AddHostedService<MeasurementService>();
+028 
+029 builder.Services.AddSwaggerGen(c =>
+030 {
+031 c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo { Title = "SmartWatch API", Version = "v1" });
+032 });
+033 
+034 var app = builder.Build();
+035 
+036 app.UseSwagger();
+037 app.UseSwaggerUI(c =>
+038 {
+039 c.SwaggerEndpoint("/swagger/v1/swagger.json", "SmartWatch API v1");
+040 });
+041 
+042 app.UseRouting();
+043 
+044 app.UseAuthorization();
+045 
+046 app.MapControllers();
+047 
+048 var locale = GetUserLocale();
+049 LocalizationResources = LoadLocalizationResource(locale);
+050 
+051 Console.WriteLine(LocalizationResources["EnterPatientId"]);
+052 PatientId = int.Parse(Console.ReadLine());
+053 
+054 Console.WriteLine(LocalizationResources["EnterMedicalDeviceId"]);
+055 MedicalDeviceId = Console.ReadLine();
+056 
+057 app.Run();
+058 }
+059 
+060 static Locale GetUserLocale()
+061 {
+062 while (true)
+063 {
+064 Console.Write("Select your language (en/ua): ");
+065 string selectedLocale = Console.ReadLine().ToLower();
+066 
+067 if (selectedLocale == "en" || selectedLocale == "ua")
+068 {
+69 return selectedLocale == "en" ? Locale.en : Locale.ua;
+070 }
+071 
+072 Console.WriteLine("Invalid choice. Please enter 'en' for English or 'ua' for Ukrainian.");
+073 }
+074 }
+075 
+076 static Dictionary<string, string> LoadLocalizationResource(Locale locale)
+077 {
+078 string localizationFileName = $"Locales\\{locale}.json";
+079 Dictionary<string, string> resource = new Dictionary<string, string>();
+080 
+081 try
+082 {
+083 string json = File.ReadAllText(localizationFileName);
+084 resource = JsonSerializer.Deserialize<Dictionary<string, string>>(json);
+085 }
+086 catch (FileNotFoundException)
+087 {
+088 Console.WriteLine($"Localization file '{localizationFileName}' not found. Using default locale.");
+089 string defaultLocalizationFileName = "Locales\\ua.json";
+090 string json = File.ReadAllText(defaultLocalizationFileName);
+091 resource = JsonSerializer.Deserialize<Dictionary<string, string>>(json);
+092 }
+093 catch (Exception ex)
+094 {
+095 Console.WriteLine($"Error loading localization: {ex.Message}");
+096 }
+097 
+098 return resource;
+099 }
+100 }
+101 
+102 public enum Locale
+103 {
+104 en,
+105 ua
+106 }
+107 }
+
+ДОДАТОК Б
+Program.cs
+
+01 using Microsoft.Extensions.DependencyInjection;
+02 using Microsoft.Extensions.Hosting;
+03 using StayHealthIoT.Data;
+04 using StayHealthIoT.Models;
+05 using System;
+06 using System.Threading;
+07 using System.Threading.Tasks;
+08 
+09 namespace StayHealthIoT.Services
+10 {
+11 public class MeasurementService : IHostedService, IDisposable
+12 {
+13 private Timer _timer;
+14 private readonly IServiceScopeFactory _scopeFactory;
+15 private readonly Random _random = new Random();
+16 private const double MinTemp = 36.0;
+17 private const double MaxTemp = 37.5;
+18 
+19 public MeasurementService(IServiceScopeFactory scopeFactory)
+20 {
+21 _scopeFactory = scopeFactory;
+22 }
+23 
+24 public Task StartAsync(CancellationToken cancellationToken)
+25 {
+26 _timer = new Timer(DoWork, null, TimeSpan.Zero, TimeSpan.FromMinutes(5));
+27 return Task.CompletedTask;
+28 }
+29 
+30 private void DoWork(object state)
+31 {
+32 using var scope = _scopeFactory.CreateScope();
+33 var context = scope.ServiceProvider.GetRequiredService<SmartWatchDbContext>();
+34 
+35 var temperature = _random.NextDouble() * (MaxTemp - MinTemp) + MinTemp;
+36 
+37 var measurement = new Measurement
+38 {
+39 PatientId = Program.PatientId,
+40 MeasurementValue = (float)temperature,
+41 MedicalDeviceId = Program.MedicalDeviceId,
+42 MeasurementDate = DateTime.UtcNow
+43 };
+44 
+45 context.Measurements.Add(measurement);
+46 context.SaveChanges();
+47 
+48 if (temperature < MinTemp || temperature > MaxTemp)
+49 {
+50 Console.WriteLine(Program.LocalizationResources["TemperatureOutOfRange"], temperature);
+51 }
+52 }
+53 
+54 public Task StopAsync(CancellationToken cancellationToken)
+55 {
+56 _timer?.Change(Timeout.Infinite, 0);
+57 return Task.CompletedTask;
+58 }
+59 
+60 public void Dispose()
+61 {
+62 _timer?.Dispose();
+63 }
+64 }
+65 }
 
